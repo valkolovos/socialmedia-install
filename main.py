@@ -1,23 +1,18 @@
-import io
-import json
 import os
 import re
 import sys
 import time
 
 from datetime import datetime
-from threading import Lock
 from uuid import uuid4
 
 import pexpect
 
-from flask import Flask, copy_current_request_context, render_template, request, session
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
 socketio = SocketIO(app)
-thread = None
-thread_lock = Lock()
 active_installs = {}
 print('started socket io app')
 
@@ -35,28 +30,10 @@ def retry_command(cmd):
         retries += 1
     raise Exception(f'{cmd} exceeded retry count')
 
-def background_thread():
-    """Example of how to send server generated events to clients."""
-    print('starting background thread')
-    count = 0
-    while True:
-        socketio.sleep(2)
-        count += 1
-        socketio.emit('keepAlive',
-                      {'message': 'Server generated event', 'count': count})
-
 @socketio.event
 def connect():
-    @copy_current_request_context
-    def ack_received_connect():
-        print('connect message received')
-
     print('client connected')
-    emit('installEvent', {'message': 'connected'}, callback=ack_received_connect)
-    global thread
-    with thread_lock:
-        if thread is None:
-            thread = socketio.start_background_task(background_thread)
+    emit('installEvent', {'message': 'connected'})
 
 @socketio.event
 def disconnect():
@@ -75,10 +52,6 @@ def hello_world():
 
 @socketio.on('submitToken')
 def submitToken(data):
-    @copy_current_request_context
-    def ack_received_message():
-        print('install message received')
-
     try:
         print(request)
         auth = active_installs[data['auth_id']]
@@ -93,15 +66,15 @@ def submitToken(data):
             project_name = f'vincent-{int(datetime.utcnow().timestamp())}'
             emit('installEvent', {'message': f'Creating project {project_name}...'})
             retry_command(f'gcloud projects create {project_name} --name="Social Media" --quiet')
-            emit('installEvent', {'message': f'Done creating project'})
+            emit('installEvent', {'message': 'Done creating project'})
 
         retry_command(f'gcloud config set project {project_name}')
 
-        emit('installEvent', {'message': f'Enabling billing service...'}, callback=ack_received_message)
-        retry_command(f'gcloud services enable cloudbilling.googleapis.com')
-        emit('installEvent', {'message': f'Done billing service'})
+        emit('installEvent', {'message': 'Enabling billing service...'})
+        retry_command('gcloud services enable cloudbilling.googleapis.com')
+        emit('installEvent', {'message': 'Done billing service'})
 
-        emit('installEvent', {'message': f'Linking billing account to project...'})
+        emit('installEvent', {'message': 'Linking billing account to project...'})
         billing_account_re = re.compile('name = (billingAccounts/[^\r]*)')
         billing_account_response = retry_command('gcloud beta billing accounts list --format=config')
         billing_account = billing_account_re.search(billing_account_response).group(1)
@@ -137,7 +110,7 @@ def submitToken(data):
         service_account_response = retry_command(
             f'gcloud iam service-accounts keys create service-account-creds.json --iam-account={project_name}@appspot.gserviceaccount.com'
         )
-        service_account_re = re.compile('created key \[([^]]*)\]')
+        service_account_re = re.compile(r'created key \[([^]]*)\]')
         service_account_id = service_account_re.search(service_account_response).group(1)
 
         try:
@@ -198,5 +171,4 @@ def submitToken(data):
 
 if __name__ == "__main__":
     socketio.run(app, debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
 
