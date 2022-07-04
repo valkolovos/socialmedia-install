@@ -15,17 +15,17 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    
+
     - name: Configure AWS credentials from Test account
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-2
+        aws-region: us-west-1
         role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
         role-duration-seconds: 1200
         role-session-name: FremeInstallSession
-        
+
     - name: Build the Docker image
       run: |
         aws ecr get-login-password --region region | docker login --username AWS --password-stdin aws_account_id.dkr.ecr.region.amazonaws.com
