@@ -1,0 +1,41 @@
+<html>
+  <head>
+    <title>Install It!!</title>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js" integrity="sha384-7EyYLQZgWBi67fBtVxw60/OWl1kjsfrPFcaU0pp0nAh+i8FD068QogUvg85Ewy1k" crossorigin="anonymous"></script>
+    <script type="text/javascript" charset="utf-8">
+      let socket;
+      function submitToken(form) {
+        socket = io();
+        socket.on('installEvent', function(data) {
+          let logArea = document.getElementById('log')
+          logArea.value += `${data.message}\n`;
+          logArea.scrollTop = logArea.scrollHeight;
+        });
+        socket.on('done', function(data) {
+          document.getElementById('log').value += 'all done';
+          socket.disconnect();
+        });
+        socket.emit(
+          'submitToken',
+          {
+            auth_id: form.elements[0].value,
+            token: form.elements[1].value,
+            project: form.elements[2].value
+          }
+        );
+      }
+    </script>
+  </head>
+  <body>
+    <p>Please visit <a href="{{ url }}" target="_blank">{{ url }}</a> to get your authentication token</p>
+    <form action="/" method="post">
+      <input type="hidden" value="{{auth_id}}"/>
+      <label for="token">Token:</label>
+      <input type="text" id="token" name="token"/><br/>
+      <label for="project">Project (leave blank for new project):</label>
+      <input type="project" id="token" name="token"/><br/>
+      <input type="button" value="Submit" onclick="submitToken(this.form)">
+    </form>
+    <textarea id="log" rows="20" cols="120"></textarea>
+  </body>
+</html>
