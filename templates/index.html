@@ -14,7 +14,7 @@
         socket.on('keepAlive', function(data) {
           let keepAlive = document.getElementById('keepAlive');
           keepAlive.innerHtml = data.message;
-        }
+        });
         socket.on('done', function(data) {
           document.getElementById('log').value += 'all done';
           socket.disconnect();
