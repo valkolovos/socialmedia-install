@@ -13,10 +13,11 @@
         });
         socket.on('keepAlive', function(data) {
           let keepAlive = document.getElementById('keepAlive');
-          keepAlive.innerHtml = data.message;
+          keepAlive.innerHTML = data.message;
         });
         socket.on('done', function(data) {
           document.getElementById('log').value += 'all done';
+          document.getElementById('keepAlive').innerHTML = 'done';
           socket.disconnect();
         });
         socket.emit(
