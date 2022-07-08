@@ -4,6 +4,7 @@ import sys
 import time
 
 from datetime import datetime
+from threading import Lock
 from uuid import uuid4
 
 import pexpect
@@ -13,6 +14,8 @@ from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
 socketio = SocketIO(app)
+thread_lock = Lock()
+thread = None
 active_installs = {}
 print('started socket io app')
 
@@ -29,6 +32,30 @@ def retry_command(cmd):
         time.sleep(3)
         retries += 1
     raise Exception(f'{cmd} exceeded retry count')
+
+def background_thread():
+    """Example of how to send server generated events to clients."""
+    print('starting background thread')
+    response = '/-\\|'
+    pos = 0
+    while True:
+        socketio.sleep(2)
+        socketio.emit('keepAlive',
+                      {'message': 'Server generated event', 'chr': response[pos]})
+        pos = pos + 1 if (pos + 1) < len(response) else 0
+
+@socketio.event
+def connect():
+    @copy_current_request_context
+    def ack_received_connect():
+        print('connect message received')
+
+    print('client connected')
+    emit('installEvent', {'message': 'connected'}, callback=ack_received_connect)
+    global thread
+    with thread_lock:
+        if thread is None:
+            thread = socketio.start_background_task(background_thread)
 
 @socketio.event
 def connect():
@@ -125,6 +152,7 @@ def submitToken(data):
         emit('installEvent', {'message': 'Done creating task queues'})
 
         emit('installEvent', {'message': 'Cloning code to deploy...'})
+        retry_command('rm -rf socialmedia')
         retry_command('git clone https://github.com/valkolovos/socialmedia.git')
         emit('installEvent', {'message': 'Done cloning code'})
 
@@ -137,6 +165,7 @@ def submitToken(data):
         emit('installEvent', {'message': 'Done deploying app'})
 
         emit('installEvent', {'message': 'Cloning frontend...'})
+        retry_command('rm -rf socialmedia-frontend')
         retry_command('git clone https://github.com/valkolovos/socialmedia-frontend.git')
         emit('installEvent', {'message': 'Done cloning frontend'})
 
