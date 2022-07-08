@@ -58,11 +58,6 @@ def connect():
             thread = socketio.start_background_task(background_thread)
 
 @socketio.event
-def connect():
-    print('client connected')
-    emit('installEvent', {'message': 'connected'})
-
-@socketio.event
 def disconnect():
     print('client disconnected', request)
 

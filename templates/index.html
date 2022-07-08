@@ -11,6 +11,10 @@
           logArea.value += `${data.message}\n`;
           logArea.scrollTop = logArea.scrollHeight;
         });
+        socket.on('keepAlive', function(data) {
+          let keepAlive = document.getElementById('keepAlive');
+          keepAlive.innerHtml = data.message;
+        }
         socket.on('done', function(data) {
           document.getElementById('log').value += 'all done';
           socket.disconnect();
@@ -37,5 +41,6 @@
       <input type="button" value="Submit" onclick="submitToken(this.form)">
     </form>
     <textarea id="log" rows="20" cols="120"></textarea>
+    <p id="keepAlive"></p>
   </body>
 </html>
