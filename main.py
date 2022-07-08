@@ -46,12 +46,8 @@ def background_thread():
 
 @socketio.event
 def connect():
-    @copy_current_request_context
-    def ack_received_connect():
-        print('connect message received')
-
     print('client connected')
-    emit('installEvent', {'message': 'connected'}, callback=ack_received_connect)
+    emit('installEvent', {'message': 'connected'})
     global thread
     with thread_lock:
         if thread is None:
