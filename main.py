@@ -99,9 +99,10 @@ def submitToken(data):
         retry_command(f'gcloud beta billing projects link {project_name} --billing-account={billing_account}')
         emit('installEvent', {'message': 'Done linking billing acount'})
 
-        emit('installEvent', {'message': 'Enabling cloudbuild and cloudtasks services...'})
+        emit('installEvent', {'message': 'Enabling cloudbuild, cloudtasks, and secretmanager services...'})
         retry_command('gcloud services enable cloudbuild.googleapis.com')
         retry_command('gcloud services enable cloudtasks.googleapis.com')
+        retry_command('gcloud services enable secretmanager.googleapis.com')
         emit('installEvent', {'message': 'Done enabling cloudbuild and cloudtasks services'})
 
         check_for_app = pexpect.spawn('gcloud app versions list', encoding='utf-8', timeout=None)
@@ -124,6 +125,13 @@ def submitToken(data):
             emit('installEvent', {'message': 'Service account was never created. Failing...'})
             raise Exception('Service account was never created.')
 
+        emit('installEvent', {'message': 'Adding secretsManager.accessor role to service account...'})
+        retry_command(
+            f'gcloud projects add-iam-policy-binding {project_name} '
+            '--member="serviceAccount:{project_name}@appspot.gserviceaccount.com" '
+            '--role="roles/secretmanager.secretAccessor"'
+        )
+        emit('installEvent', {'message': 'Done adding secretsManager.accessor role to service account'})
         emit('installEvent', {'message': 'Creating and downloading service account credentials...'})
         service_account_response = retry_command(
             f'gcloud iam service-accounts keys create service-account-creds.json --iam-account={project_name}@appspot.gserviceaccount.com'
@@ -180,11 +188,27 @@ def submitToken(data):
         emit('installEvent', {'message': 'Done deploying frontend'})
         emit('installEvent', {'message': f'Access your new app at http://storage.googleapis.com/frontend-{project_name}/signup-v2.html'})
 
+        emit('installEvent', {'message': 'Writing current SHAs to GCP secrets...'})
+        backend_sha_result = retry_command('git ls-remote https://github.com/valkolovos/socialmedia.git main')
+        backend_sha = backend_sha_result.split('\t')[0]
+        frontend_sha_result = retry_command('git ls-remote https://github.com/valkolovos/socialmedia-frontend.git main')
+        frontend_sha = frontend_sha_result.split('\t')[0]
+        secrets_list = retry_command('gcloud secrets list --format="value(name)"')
+        if not 'deploy-shas' in secrets_list:
+            emit('installEvent', {'message': 'Creating deploy-shas secret...'})
+            retry_command('gcloud secrets create deploy-shas')
+            emit('installEvent', {'message': 'Done creating deploy-shas secret'})
+        with open('shas.json', 'w') as shas:
+            shas.write(f'{{"serverSHA":"{backend_sha}", "frontendSHA":"{frontend_sha}"}}')
+        retry_command('gcloud secrets versions add deploy-shas --data-file="shas.json"')
+        emit('installEvent', {'message': 'Done writing current SHAs to GCP secrets'})
+
         retry_command(
             f'gcloud iam service-accounts keys delete {service_account_id} --iam-account={project_name}@appspot.gserviceaccount.com --quiet'
         )
     except Exception as e:
         emit('installEvent', {'message': 'install failed - see logs for details'})
+        raise e
     finally:
         emit('done', {})
 

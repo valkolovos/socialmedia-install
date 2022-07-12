@@ -13,7 +13,7 @@
         });
         socket.on('keepAlive', function(data) {
           let keepAlive = document.getElementById('keepAlive');
-          keepAlive.innerHTML = data.message;
+          keepAlive.innerHTML = data.chr;
         });
         socket.on('done', function(data) {
           document.getElementById('log').value += 'all done';
