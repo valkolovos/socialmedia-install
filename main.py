@@ -128,7 +128,7 @@ def submitToken(data):
         emit('installEvent', {'message': 'Adding secretsManager.accessor role to service account...'})
         retry_command(
             f'gcloud projects add-iam-policy-binding {project_name} '
-            '--member="serviceAccount:{project_name}@appspot.gserviceaccount.com" '
+            f'--member="serviceAccount:{project_name}@appspot.gserviceaccount.com" '
             '--role="roles/secretmanager.secretAccessor"'
         )
         emit('installEvent', {'message': 'Done adding secretsManager.accessor role to service account'})
