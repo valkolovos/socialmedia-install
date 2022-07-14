@@ -191,8 +191,7 @@ def submitToken(data):
         secrets_list = retry_command('gcloud secrets list --format="value(name)"')
 
         emit('installEvent', {'message': 'Writing backend SHA to GCP secrets...'})
-        backend_sha_result = retry_command('git ls-remote https://github.com/valkolovos/socialmedia.git main', timeout=30)
-        backend_sha = backend_sha_result.split('\t')[0]
+        backend_sha_result = retry_command('./get_rev.sh socialmedia')
         if not 'backend-sha' in secrets_list:
             emit('installEvent', {'message': 'Creating backend-sha secret...'})
             retry_command('gcloud secrets create backend-sha')
@@ -203,7 +202,7 @@ def submitToken(data):
         emit('installEvent', {'message': 'Done writing backend SHA to GCP secrets'})
 
         emit('installEvent', {'message': 'Writing frontend SHA to GCP secrets...'})
-        frontend_sha_result = retry_command('git ls-remote https://github.com/valkolovos/socialmedia-frontend.git main', timeout=30)
+        frontend_sha_result = retry_command('./get_rev.sh socialmedia-frontend.git')
         frontend_sha = frontend_sha_result.split('\t')[0]
         if not 'frontend-sha' in secrets_list:
             emit('installEvent', {'message': 'Creating frontend-sha secret...'})
