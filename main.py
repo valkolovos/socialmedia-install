@@ -192,6 +192,7 @@ def submitToken(data):
 
         emit('installEvent', {'message': 'Writing backend SHA to GCP secrets...'})
         backend_sha_result = retry_command('./get_rev.sh socialmedia')
+        backend_sha = backend_sha_result.replace('\n','').replace('\r','')
         if not 'backend-sha' in secrets_list:
             emit('installEvent', {'message': 'Creating backend-sha secret...'})
             retry_command('gcloud secrets create backend-sha')
@@ -202,8 +203,8 @@ def submitToken(data):
         emit('installEvent', {'message': 'Done writing backend SHA to GCP secrets'})
 
         emit('installEvent', {'message': 'Writing frontend SHA to GCP secrets...'})
-        frontend_sha_result = retry_command('./get_rev.sh socialmedia-frontend.git')
-        frontend_sha = frontend_sha_result.split('\t')[0]
+        frontend_sha_result = retry_command('./get_rev.sh socialmedia-frontend')
+        frontend_sha = frontend_sha_result.replace('\n','').replace('\r','')
         if not 'frontend-sha' in secrets_list:
             emit('installEvent', {'message': 'Creating frontend-sha secret...'})
             retry_command('gcloud secrets create frontend-sha')
@@ -212,6 +213,16 @@ def submitToken(data):
             shas.write(f'{{"frontendSHA":"{frontend_sha}"}}')
         retry_command('gcloud secrets versions add frontend-sha --data-file=frontend_sha.json"')
         emit('installEvent', {'message': 'Done writing frontend SHA to GCP secrets'})
+
+        existing_jobs = retry_command('gcloud beta run jobs list')
+        if 'freme-backend-update' not in existing_jobs:
+            emit('installEvent', {'message': 'Creating backend update job...'})
+            retry_command(
+                'gcloud beta run jobs create freme-backend-update '
+                '--image=us-west2-docker.pkg.dev/freme-2022/freme-update/freme-update:latest '
+                f'--region=us-central1 --service-account={project_name}@appspot.gserviceaccount.com --quiet'
+            )
+            emit('installEvent', {'message': 'Done creating backend update job'})
 
         retry_command(
             f'gcloud iam service-accounts keys delete {service_account_id} --iam-account={project_name}@appspot.gserviceaccount.com --quiet'
