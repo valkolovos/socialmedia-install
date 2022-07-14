@@ -19,11 +19,11 @@ thread = None
 active_installs = {}
 print('started socket io app')
 
-def retry_command(cmd):
+def retry_command(cmd, timeout=None):
     retries = 0
     while retries < 5:
         print(f'Executing command "{cmd}"')
-        script = pexpect.spawn(cmd, encoding='utf-8', timeout=None)
+        script = pexpect.spawn(cmd, encoding='utf-8', timeout=timeout)
         script.logfile = sys.stdout
         script.expect(pexpect.EOF)
         script.close()
@@ -191,7 +191,7 @@ def submitToken(data):
         secrets_list = retry_command('gcloud secrets list --format="value(name)"')
 
         emit('installEvent', {'message': 'Writing backend SHA to GCP secrets...'})
-        backend_sha_result = retry_command('git ls-remote https://github.com/valkolovos/socialmedia.git main')
+        backend_sha_result = retry_command('git ls-remote https://github.com/valkolovos/socialmedia.git main', timeout=30)
         backend_sha = backend_sha_result.split('\t')[0]
         if not 'backend-sha' in secrets_list:
             emit('installEvent', {'message': 'Creating backend-sha secret...'})
@@ -203,7 +203,7 @@ def submitToken(data):
         emit('installEvent', {'message': 'Done writing backend SHA to GCP secrets'})
 
         emit('installEvent', {'message': 'Writing frontend SHA to GCP secrets...'})
-        frontend_sha_result = retry_command('git ls-remote https://github.com/valkolovos/socialmedia-frontend.git main')
+        frontend_sha_result = retry_command('git ls-remote https://github.com/valkolovos/socialmedia-frontend.git main', timeout=30)
         frontend_sha = frontend_sha_result.split('\t')[0]
         if not 'frontend-sha' in secrets_list:
             emit('installEvent', {'message': 'Creating frontend-sha secret...'})
