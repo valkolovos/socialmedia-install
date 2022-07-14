@@ -99,11 +99,12 @@ def submitToken(data):
         retry_command(f'gcloud beta billing projects link {project_name} --billing-account={billing_account}')
         emit('installEvent', {'message': 'Done linking billing acount'})
 
+        # if we end up using cloud functions, we'll need to include pub/sub service here as well
         emit('installEvent', {'message': 'Enabling cloudbuild, cloudtasks, and secretmanager services...'})
         retry_command('gcloud services enable cloudbuild.googleapis.com')
         retry_command('gcloud services enable cloudtasks.googleapis.com')
         retry_command('gcloud services enable secretmanager.googleapis.com')
-        emit('installEvent', {'message': 'Done enabling cloudbuild and cloudtasks services'})
+        emit('installEvent', {'message': 'Done enabling cloudbuild, cloudtasks, and secretmanager services'})
 
         check_for_app = pexpect.spawn('gcloud app versions list', encoding='utf-8', timeout=None)
         check_for_app.logfile = sys.stdout
@@ -186,26 +187,37 @@ def submitToken(data):
         emit('installEvent', {'message': 'Deploying frontend...'})
         retry_command(f'gsutil -m cp -r socialmedia-frontend/dist/* gs://frontend-{project_name}/')
         emit('installEvent', {'message': 'Done deploying frontend'})
-        emit('installEvent', {'message': f'Access your new app at http://storage.googleapis.com/frontend-{project_name}/signup-v2.html'})
 
-        emit('installEvent', {'message': 'Writing current SHAs to GCP secrets...'})
+        secrets_list = retry_command('gcloud secrets list --format="value(name)"')
+
+        emit('installEvent', {'message': 'Writing backend SHA to GCP secrets...'})
         backend_sha_result = retry_command('git ls-remote https://github.com/valkolovos/socialmedia.git main')
         backend_sha = backend_sha_result.split('\t')[0]
+        if not 'backend-sha' in secrets_list:
+            emit('installEvent', {'message': 'Creating backend-sha secret...'})
+            retry_command('gcloud secrets create backend-sha')
+            emit('installEvent', {'message': 'Done creating backend-sha secret'})
+        with open('backend_sha.json', 'w') as shas:
+            shas.write(f'{{"serverSHA":"{backend_sha}"}}')
+        retry_command(f'gcloud secrets versions add backend-sha --data-file=backend_sha.json')
+        emit('installEvent', {'message': 'Done writing backend SHA to GCP secrets'})
+
+        emit('installEvent', {'message': 'Writing frontend SHA to GCP secrets...'})
         frontend_sha_result = retry_command('git ls-remote https://github.com/valkolovos/socialmedia-frontend.git main')
         frontend_sha = frontend_sha_result.split('\t')[0]
-        secrets_list = retry_command('gcloud secrets list --format="value(name)"')
-        if not 'deploy-shas' in secrets_list:
-            emit('installEvent', {'message': 'Creating deploy-shas secret...'})
-            retry_command('gcloud secrets create deploy-shas')
-            emit('installEvent', {'message': 'Done creating deploy-shas secret'})
-        with open('shas.json', 'w') as shas:
-            shas.write(f'{{"serverSHA":"{backend_sha}", "frontendSHA":"{frontend_sha}"}}')
-        retry_command('gcloud secrets versions add deploy-shas --data-file="shas.json"')
-        emit('installEvent', {'message': 'Done writing current SHAs to GCP secrets'})
+        if not 'frontend-sha' in secrets_list:
+            emit('installEvent', {'message': 'Creating frontend-sha secret...'})
+            retry_command('gcloud secrets create frontend-sha')
+            emit('installEvent', {'message': 'Done creating frontend-sha secret'})
+        with open('frontend_sha.json', 'w') as shas:
+            shas.write(f'{{"frontendSHA":"{frontend_sha}"}}')
+        retry_command('gcloud secrets versions add frontend-sha --data-file=frontend_sha.json"')
+        emit('installEvent', {'message': 'Done writing frontend SHA to GCP secrets'})
 
         retry_command(
             f'gcloud iam service-accounts keys delete {service_account_id} --iam-account={project_name}@appspot.gserviceaccount.com --quiet'
         )
+        emit('installEvent', {'message': f'Access your new app at http://storage.googleapis.com/frontend-{project_name}/signup-v2.html'})
     except Exception as e:
         emit('installEvent', {'message': 'install failed - see logs for details'})
         raise e
