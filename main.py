@@ -100,11 +100,12 @@ def submitToken(data):
         emit('installEvent', {'message': 'Done linking billing acount'})
 
         # if we end up using cloud functions, we'll need to include pub/sub service here as well
-        emit('installEvent', {'message': 'Enabling cloudbuild, cloudtasks, and secretmanager services...'})
+        emit('installEvent', {'message': 'Enabling cloudbuild, cloudtasks, cloudscheduler, and secretmanager services...'})
         retry_command('gcloud services enable cloudbuild.googleapis.com')
         retry_command('gcloud services enable cloudtasks.googleapis.com')
+        retry_command('gcloud services enable cloudscheduler.googleapis.com')
         retry_command('gcloud services enable secretmanager.googleapis.com')
-        emit('installEvent', {'message': 'Done enabling cloudbuild, cloudtasks, and secretmanager services'})
+        emit('installEvent', {'message': 'Done enabling cloudbuild, cloudtasks, cloudscheduler, and secretmanager services'})
 
         check_for_app = pexpect.spawn('gcloud app versions list', encoding='utf-8', timeout=None)
         check_for_app.logfile = sys.stdout
@@ -133,6 +134,13 @@ def submitToken(data):
             '--role="roles/secretmanager.secretAccessor"'
         )
         emit('installEvent', {'message': 'Done adding secretsManager.accessor role to service account'})
+        emit('installEvent', {'message': 'Adding serviceAccountTokenCreator role to service account...'})
+        retry_command(
+            f'gcloud projects add-iam-policy-binding {project_name} '
+            f'--member="serviceAccount:{project_name}@appspot.gserviceaccount.com" '
+            '--role="roles/iam.serviceAccountTokenCreator"'
+        )
+        emit('installEvent', {'message': 'Done adding serviceAccountTokenCreator role to service account'})
         emit('installEvent', {'message': 'Creating and downloading service account credentials...'})
         service_account_response = retry_command(
             f'gcloud iam service-accounts keys create service-account-creds.json --iam-account={project_name}@appspot.gserviceaccount.com'
@@ -215,14 +223,32 @@ def submitToken(data):
         emit('installEvent', {'message': 'Done writing frontend SHA to GCP secrets'})
 
         existing_jobs = retry_command('gcloud beta run jobs list')
+        job_region = 'us-central1'
+        backend_image = 'us-central1-docker.pkg.dev/freme-2022/freme-backend-update/freme-backend-update:latest'
+        frontend_image = 'us-central1-docker.pkg.dev/freme-2022/freme-frontend-update/freme-frontend-update:latest'
         if 'freme-backend-update' not in existing_jobs:
-            emit('installEvent', {'message': 'Creating backend update job...'})
-            retry_command(
-                'gcloud beta run jobs create freme-backend-update '
-                '--image=us-west2-docker.pkg.dev/freme-2022/freme-update/freme-update:latest '
-                f'--region=us-central1 --service-account={project_name}@appspot.gserviceaccount.com --quiet'
-            )
-            emit('installEvent', {'message': 'Done creating backend update job'})
+            backend_cmd = 'create'
+        else:
+            backend_cmd = 'update'
+        emit('installEvent', {'message': f'{"Creating" if backend_cmd=="create" else "Updating"} backend update job...'})
+        retry_command(
+            f'gcloud beta run jobs {backend_cmd} freme-backend-update '
+            f'--image={backend_image} --task-timeout=30m --max-retries=1'
+            f'--region={job_region} --service-account={project_name}@appspot.gserviceaccount.com --quiet'
+        )
+        emit('installEvent', {'message': f'Done {"creating" if backend_cmd=="create" else "updating"} backend update job'})
+
+        if 'freme-frontend-update' not in existing_jobs:
+            frontend_cmd = 'create'
+        else:
+            frontend_cmd = 'update'
+        emit('installEvent', {'message': f'{"Creating" if frontend_cmd=="create" else "Updating"} frontend update job...'})
+        retry_command(
+            f'gcloud beta run jobs {frontend_cmd} freme-frontend-update '
+            f'--image={frontend_image} '
+            f'--region={job_region} --service-account={project_name}@appspot.gserviceaccount.com --quiet'
+        )
+        emit('installEvent', {'message': f'Done {"creating" if frontend_cmd=="create" else "updating"} frontend update job'})
 
         retry_command(
             f'gcloud iam service-accounts keys delete {service_account_id} --iam-account={project_name}@appspot.gserviceaccount.com --quiet'
