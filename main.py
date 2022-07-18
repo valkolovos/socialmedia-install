@@ -245,7 +245,7 @@ def submitToken(data):
         emit('installEvent', {'message': f'{"Creating" if frontend_cmd=="create" else "Updating"} frontend update job...'})
         retry_command(
             f'gcloud beta run jobs {frontend_cmd} freme-frontend-update '
-            f'--image={frontend_image} '
+            f'--image={frontend_image} --task-timeout=30m --max-retries=1 --cpu=1 --memory=1.5Gi '
             f'--region={job_region} --service-account={project_name}@appspot.gserviceaccount.com --quiet'
         )
         emit('installEvent', {'message': f'Done {"creating" if frontend_cmd=="create" else "updating"} frontend update job'})
