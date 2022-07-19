@@ -224,8 +224,8 @@ def submitToken(data):
 
         existing_jobs = retry_command('gcloud beta run jobs list')
         job_region = 'us-central1'
-        backend_image = 'us-central1-docker.pkg.dev/freme-2022/freme-backend-update/freme-backend-update:latest'
-        frontend_image = 'us-central1-docker.pkg.dev/freme-2022/freme-frontend-update/freme-frontend-update:latest'
+        backend_image = 'us-central1-docker.pkg.dev/freme-2022/freme-update/freme-backend-update:latest'
+        frontend_image = 'us-central1-docker.pkg.dev/freme-2022/freme-update/freme-frontend-update:latest'
         if 'freme-backend-update' not in existing_jobs:
             backend_cmd = 'create'
         else:
