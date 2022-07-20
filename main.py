@@ -100,12 +100,23 @@ def submitToken(data):
         emit('installEvent', {'message': 'Done linking billing acount'})
 
         # if we end up using cloud functions, we'll need to include pub/sub service here as well
-        emit('installEvent', {'message': 'Enabling cloudbuild, cloudtasks, cloudscheduler, and secretmanager services...'})
+        emit('installEvent', {'message': 'Enabling services...'})
+        emit('installEvent', {'message': '  Enabling cloudbuild service'})
         retry_command('gcloud services enable cloudbuild.googleapis.com')
+
+        emit('installEvent', {'message': '  Enabling cloudtasks service'})
         retry_command('gcloud services enable cloudtasks.googleapis.com')
+
+        emit('installEvent', {'message': '  Enabling cloudscheduler service'})
         retry_command('gcloud services enable cloudscheduler.googleapis.com')
+
+        emit('installEvent', {'message': '  Enabling secretmanager service'})
         retry_command('gcloud services enable secretmanager.googleapis.com')
-        emit('installEvent', {'message': 'Done enabling cloudbuild, cloudtasks, cloudscheduler, and secretmanager services'})
+
+        emit('installEvent', {'message': '  Enabling run service'})
+        retry_command('gcloud services enable run.googleapis.com')
+
+        emit('installEvent', {'message': 'Done enabling services'})
 
         check_for_app = pexpect.spawn('gcloud app versions list', encoding='utf-8', timeout=None)
         check_for_app.logfile = sys.stdout
@@ -113,7 +124,7 @@ def submitToken(data):
         check_for_app.close()
         if check_for_app.exitstatus != 0:
             emit('installEvent', {'message': 'Creating app...'})
-            retry_command('gcloud app create --region=us-west2 --quiet')
+            retry_command('gcloud app create --region=us-central --quiet')
             emit('installEvent', {'message': 'Done creating app'})
 
         retries = 0
@@ -155,7 +166,7 @@ def submitToken(data):
         emit('installEvent', {'message': 'Creating task queues...'})
         for queue in ['post-created','post-notify','ack-connection','request-connection','comment-created']:
             if queue not in check_for_queues_response:
-                emit('installEvent', {'message': f'Creating {queue}'})
+                emit('installEvent', {'message': f'  Creating queue {queue}'})
                 retry_command(f'gcloud tasks queues create {queue}')
         emit('installEvent', {'message': 'Done creating task queues'})
 
@@ -222,7 +233,7 @@ def submitToken(data):
         retry_command('gcloud secrets versions add frontend-sha --data-file=frontend_sha.json"')
         emit('installEvent', {'message': 'Done writing frontend SHA to GCP secrets'})
 
-        existing_jobs = retry_command('gcloud beta run jobs list')
+        existing_jobs = retry_command('gcloud beta run jobs list --quiet')
         job_region = 'us-central1'
         backend_image = 'us-central1-docker.pkg.dev/freme-2022/freme-update/freme-backend-update:latest'
         frontend_image = 'us-central1-docker.pkg.dev/freme-2022/freme-update/freme-frontend-update:latest'
