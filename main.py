@@ -58,7 +58,7 @@ def disconnect():
     print('client disconnected', request)
 
 @app.route("/")
-def hello_world():
+def home():
     auth_login_url = re.compile(r'https://accounts.google.com/o/oauth2/auth\?.*')
     auth = pexpect.spawn('gcloud auth login --no-launch-browser --quiet', encoding='utf-8')
     auth.logfile = sys.stdout
@@ -67,6 +67,10 @@ def hello_world():
     auth_id = str(uuid4())
     active_installs[auth_id] = auth
     return render_template('index.html', url=auth_login, auth_id=auth_id)
+
+@app.route('/alive')
+def alive():
+    return '', 200
 
 @socketio.on('submitToken')
 def submitToken(data):
