@@ -254,6 +254,7 @@ def submitToken(data):
             f'gcloud iam service-accounts keys delete {service_account_id} --iam-account={project_name}@appspot.gserviceaccount.com --quiet'
         )
         emit('installEvent', {'message': f'Access your new app at http://storage.googleapis.com/frontend-{project_name}/signup-v2.html'})
+        emit('launch', {'url': f' https://storage.googleapis.com/frontend-{project_name}/signup-v2.html'})
     except Exception as e:
         emit('installEvent', {'message': 'install failed - see logs for details'})
         raise e

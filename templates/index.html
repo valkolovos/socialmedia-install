@@ -20,6 +20,9 @@
           document.getElementById('keepAlive').innerHTML = 'done';
           socket.disconnect();
         });
+        socket.on('launch', function(data) {
+          document.getElementById('launch').innerHTML = `<a href="${data.url}" target="_blank">Go to your new site - ${data.url}</a>`;
+        });
         socket.emit(
           'submitToken',
           {
@@ -41,6 +44,7 @@
       <input type="project" id="token" name="token"/><br/>
       <input type="button" value="Submit" onclick="submitToken(this.form)">
     </form>
+    <p id="launch"></p>
     <textarea id="log" rows="20" cols="120"></textarea>
     <p id="keepAlive"></p>
   </body>
