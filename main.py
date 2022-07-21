@@ -105,6 +105,10 @@ def submitToken(data):
 
         # if we end up using cloud functions, we'll need to include pub/sub service here as well
         emit('installEvent', {'message': 'Enabling services...'})
+
+        emit('installEvent', {'message': '  Enabling apengine service'})
+        retry_command('gcloud services enable appengine.googleapis.com')
+
         emit('installEvent', {'message': '  Enabling cloudbuild service'})
         retry_command('gcloud services enable cloudbuild.googleapis.com')
 
