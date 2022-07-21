@@ -197,7 +197,9 @@ def submitToken(data):
         emit('installEvent', {'message': 'Done installing frontend dependencies'})
 
         emit('installEvent', {'message': 'Building frontend...'})
-        retry_command(f'./frontend_build.sh {project_name}')
+        app_host = retry_command('gcloud app browse --no-launch-browser')
+        app_host = app_host.replace('\r','').replace('\n','')
+        retry_command(f'./frontend_build.sh {project_name} {app_host}')
         emit('installEvent', {'message': 'Done building frontend...'})
 
         emit('installEvent', {'message': 'Creating frontend bucket...'})
