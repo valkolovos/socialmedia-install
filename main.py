@@ -124,6 +124,9 @@ def submitToken(data):
         emit('installEvent', {'message': '  Enabling run service'})
         retry_command('gcloud services enable run.googleapis.com')
 
+        emit('installEvent', {'message': '  Enabling iamcredentials service'})
+        retry_command('gcloud services enable iamcredentials.googleapis.com')
+
         emit('installEvent', {'message': 'Done enabling services'})
 
         check_for_app = pexpect.spawn('gcloud app versions list', encoding='utf-8', timeout=None)
